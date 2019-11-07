@@ -1,0 +1,6 @@
+Attribute1:
+    type: int
+    required: true
+    help: "test1"
+    default: 0
+

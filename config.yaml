@@ -1,0 +1,7 @@
+AttributeInt: 10
+AttribueBool: True
+AttributeBool: True
+AttributeString: "test"
+AttributeInt2: 15
+AttributeClass:
+    Attribute1: 10

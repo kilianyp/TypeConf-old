@@ -1,0 +1,30 @@
+AttributeInt:
+    type: int
+    required: true
+    help: "testint"
+
+AttributeBool:
+    type: bool
+    required: true
+    help: "testbool"
+
+AttributeString:
+    type: string
+    required: true
+    help: "teststring"
+
+AttributeInt2:
+    type: int
+    required: true
+
+AttributeInt4:
+    type: int
+    required: false
+    default: 0
+
+AttributeClass:
+    type: class2
+    required: false
+    help: "test2"
+    default: false
+
