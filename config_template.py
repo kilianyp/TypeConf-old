@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 
 logger = logging.getLogger()
 SUPPORTED_FILETYPES = ['.yaml', '.json']
@@ -55,68 +56,105 @@ class Cache(object):
 
 cache = Cache()
 
-
 class Attribute(object):
-    def __init__(self, type, required, default=None, help=""):
-        self.type = type
-        self.default = default
+    def __init__(self, name, descriptor, required, default=None, help=""):
+        self.name = name
+        self.descriptor = descriptor
         self.required = required
+        # TODO requires
+        self.default = default
         self.help = help
 
+    def parse(self):
+        if not self.descriptor.isset:
+            if self.required:
+                raise ValueError("Value not set %s", self.name, self.descriptor)
+            logger.warning("Setting default value for %s", self.name)
+            # TODO default must be set WHAT if it wasnt set
+            self.descriptor.value = self.default
+        return self.descriptor.parse()
+
     def __str__(self):
-        return "{} {} {} {}".format(self.type, self.default, self.required, self.help)
+        return "{} {} {} {} {}".format(self.name, self.default, self.required, self.help, self.descriptor.value)
 
 
 class Descriptor(object):
-    def __init__(self, name):
-        self.name = name
+    @property
+    def value(self):
+        return self._value
 
-    def parse(self, cfg):
-        raise NotImplementedError("Please don't use basetype")
+    @value.setter
+    def value(self, value):
+        print("setting {} to {}".format(self.name, value))
+        self._value = value
+        self.isset = True
 
-
-class IntDescriptor(Descriptor):
-    @staticmethod
-    def parse(value):
-        if not isinstance(value, int):
-            raise ValueError("Expected Int")
-        return value
-
-
-class BoolDescriptor(Descriptor):
-    @staticmethod
-    def parse(value):
-        if not isinstance(value, bool):
-            raise ValueError("Expected Boolean")
-        return value
-
-
-class FloatDescriptor(Descriptor):
-    @staticmethod
-    def parse(value):
-        if not isinstance(value, float):
-            raise ValueError("Expected Float")
-        return value
-
-
-class StringDescriptor(Descriptor):
-    @staticmethod
-    def parse(value):
-        if not isinstance(value, str):
-            raise ValueError("Expected String")
-        return value
-
-
-import json
-class Config(dict):
-    def __str__(self):
-        return json.dumps(self, indent=4)
-
-class CustomDescriptor(object):
     def __init__(self, name):
         self.name = name
         self.attributes = {}
-        self.cache = cache
+        self._value = None
+        self.isset = False
+
+    def to_config(self):
+        return Config({self.name: self.value})
+
+
+class IntType(Descriptor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def parse(self):
+        if not isinstance(self.value, int):
+            raise ValueError("Expected Int")
+        return True
+
+
+class BoolType(Descriptor):
+    def parse(self):
+        if not isinstance(self.value, bool):
+            raise ValueError("Expected Boolean")
+        return True
+
+
+class FloatAttribute(Descriptor):
+    def parse(self):
+        if not isinstance(self.value, float):
+            raise ValueError("Expected Float")
+        return True
+
+
+class StringAttribute(Descriptor):
+    def parse(self):
+        if not isinstance(self.value, str):
+            raise ValueError("Expected String")
+        return True
+
+class CompositeType(Descriptor):
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+        self.isset = True
+        """
+        Sets all the attribute values
+        TODO what happens if not in cache
+        TODO what about cycles
+        """
+        # assert that this is a mapping
+        for key, attribute in self.attributes.items():
+            if key not in value:
+                continue
+            attribute.descriptor.value = value.pop(key)
+
+        if len(value) != 0:
+            logger.warning("There are unused keys in this config: %s", " ,".join(value.keys()))
+
+    def __init__(self, name):
+        super().__init__(name)
+        self.attributes = {}
 
     def __str__(self):
         string = "{} with {} attributes\n".format(self.name, len(self.attributes))
@@ -131,36 +169,35 @@ class CustomDescriptor(object):
             raise KeyError("Attribute with key {} already exists".format(name))
         self.attributes[name] = attribute
 
-    def parse_yaml(self, yaml_file):
-        cfg = DescriptorFactory.read_from_yaml(yaml_file)
-        return self.parse(cfg)
-
-    def parse(self, cfg):
-        import collections
-        assert isinstance(cfg, collections.Mapping)
-
+    def parse(self):
+        # TODO
         is_valid = True
-        parsed_config = Config()
         for key, attribute in self.attributes.items():
-            if key not in cfg:
-                if attribute.required:
-                    raise ValueError("Missing value %s in config", key)
-                logger.warning("Setting default value for %s", key)
-            value = cfg.pop(key, attribute.default)
-            descriptor = cache[attribute.type]
             try:
-                value = descriptor.parse(value)
+                attribute.parse()
             except ValueError as e:
-                print(key, value)
+                print(key, attribute.descriptor.value)
                 raise
-            parsed_config[key] = value
-        if len(cfg) != 0:
-            logger.warning("There are unused keys in this config: %s", " ,".join(cfg.keys()))
-                
-        return parsed_config
+        return is_valid
 
     def __len__(self):
         return len(self.attributes)
+
+    def to_config(self):
+        return Config({key: attribute.descriptor.to_config() for key, attribute in self.attributes.items()})
+
+
+def read_from_yaml(path):
+    import yaml
+    with open(path, 'r') as f:
+        return yaml.load(f, yaml.SafeLoader)
+
+
+class Config(dict):
+    """ TODO access per dot.
+        print with help"""
+    def __str__(self):
+        return json.dumps(self, indent=4)
 
 
 class DiscoveryService(object):
@@ -170,21 +207,6 @@ class DiscoveryService(object):
 
 
 class AttributeFactory(object):
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def build(cfg):
-        type = cfg.pop('type')
-        required = cfg.pop('required')
-        default = cfg.pop('default', None)
-        help = cfg.pop('help', None)
-        if len(cfg) != 0:
-            raise ValueError("The config still contains values", cfg)
-        return Attribute(type, required, default, help)
-
-
-class DescriptorFactory(object):
     def __init__(self, *search_directory):
         """
         Args:
@@ -192,35 +214,59 @@ class DescriptorFactory(object):
         """
         #add basetypes
         self.cache = cache
-        self.cache['int'] = IntDescriptor
-        self.cache['string'] = StringDescriptor
-        self.cache['float'] = FloatDescriptor
-        self.cache['bool'] = BoolDescriptor
+        self.cache['int'] = IntType('int')
+        self.cache['string'] = StringAttribute('string')
+        self.cache['float'] = FloatAttribute('float')
+        self.cache['bool'] = BoolType('bool')
 
         for path, name in discover(search_directory[0]):
             logger.debug("Found %s in %s", name, path)
-            descriptor = self.build_simple_descriptor(path, name)
-            self.cache[name] = descriptor
+            type = self.build_composite_type(path, name)
+            self.cache[name] = type
 
-    @staticmethod
-    def read_from_yaml(path):
-        import yaml
-        with open(path, 'r') as f:
-            return yaml.load(f, yaml.SafeLoader)
+    def build_simple_attribute(self, key, cfg):
+        """ Returns Attribute"""
+        import copy
+        type = cfg.pop('type')
+        required = cfg.pop('required')
+        # TODO requires cfg.pop('requires')
+        default = cfg.pop('default', None)
+        help = cfg.pop('help', None)
+        if len(cfg) != 0:
+            raise ValueError("The config still contains values", cfg)
+        type = copy.deepcopy(self.cache[type])
+        return Attribute(key, type, required, default, help)
 
-    def build_simple_descriptor(self, path, name):
+    def build_composite_type(self, path, name):
         if path.endswith('.yaml'):
-            cfg = self.read_from_yaml(path)
+            cfg = read_from_yaml(path)
 
-        descriptor = CustomDescriptor(name)
+        type = CompositeType(name)
+
         for key, values in cfg.items():
-            attribute = AttributeFactory.build(values)
-            descriptor.add_attribute(key, attribute)
-
-        return descriptor
+            attribute = self.build_simple_attribute(key, values)
+            type.add_attribute(key, attribute)
+        return type
 
     def get_descriptor(self, identifier):
         return self.cache[identifier]
 
     def __str__(self):
         return str(self.cache)
+
+
+class ConfigTemplate(object):
+    def __init__(self, name, cache=cache):
+        self.name = name
+        self.descriptor = cache[name]
+
+    def fill_from_yaml(self, yaml_file):
+        cfg = read_from_yaml(yaml_file)
+        return self.fill_from_cfg(cfg)
+
+    def fill_from_cfg(self, cfg):
+        self.descriptor.value = cfg
+
+    def to_config(self):
+        self.descriptor.parse()
+        return self.descriptor.to_config()

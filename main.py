@@ -1,8 +1,13 @@
-from config_template import DescriptorFactory
+from config_template import ConfigTemplate, AttributeFactory
 
-factory = DescriptorFactory('descriptors')
-experiment_descriptor = factory.get_descriptor('class1')
+factory = AttributeFactory('descriptors')
+config_template = ConfigTemplate('class1')
+
 # argparser = experiment_descriptor.get_argparser()
-# print(experiment_descriptor)
-config = experiment_descriptor.parse_yaml("config.yaml")
+print(config_template.descriptor)
+config_template.fill_from_yaml("config.yaml")
+print(config_template.descriptor)
+# experiment_descriptor.fill_from_cl()
+# set values manually
+config = config_template.to_config()
 print(config)
