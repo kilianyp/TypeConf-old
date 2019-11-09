@@ -55,8 +55,9 @@ class Cache(object):
         return string
 
 
+MAGIC_DEFAULT_VALUE = "SC_MAGIC_DEFAULT_VALUE"
 class Attribute(object):
-    def __init__(self, name, descriptor, required, default=None, help=""):
+    def __init__(self, name, descriptor, required, default=MAGIC_DEFAULT_VALUE, help=""):
         self.name = name
         self.descriptor = descriptor
         self.required = required
@@ -70,6 +71,8 @@ class Attribute(object):
                 raise ValueError("Value not set %s", self.name, self.descriptor)
             logger.warning("Setting default value for %s", self.name)
             # TODO default must be set WHAT if it wasnt set
+            if self.default == MAGIC_DEFAULT_VALUE:
+                raise ValueError("Value was not set but also no default value for {}".format(self.name))
             self.descriptor.value = self.default
         return self.descriptor.parse()
 
