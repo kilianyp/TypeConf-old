@@ -54,7 +54,6 @@ class Cache(object):
         string += "a"
         return string
 
-cache = Cache()
 
 class Attribute(object):
     def __init__(self, name, descriptor, required, default=None, help=""):
@@ -85,18 +84,19 @@ class Descriptor(object):
 
     @value.setter
     def value(self, value):
-        print("setting {} to {}".format(self.name, value))
         self._value = value
         self.isset = True
 
     def __init__(self, name):
         self.name = name
-        self.attributes = {}
         self._value = None
         self.isset = False
 
+    def parse(self):
+        raise NotImplementedError()
+
     def to_config(self):
-        return Config({self.name: self.value})
+        return self.value
 
 
 class IntType(Descriptor):
@@ -128,6 +128,28 @@ class StringAttribute(Descriptor):
         if not isinstance(self.value, str):
             raise ValueError("Expected String")
         return True
+
+
+class OneOf(Descriptor):
+    def __init__(self, name):
+        super().__init__(name)
+        self.options = set()
+
+    def parse(self):
+        if self.value not in self.options:
+            raise ValueError("Expected a value from {}. Got {}.".format(self, self.value))
+        return True
+
+    def add_option(self, option):
+        self.options.add(option)
+
+    def add_options(self, options):
+        for option in options:
+            self.add_option(option)
+
+    def __str__(self):
+        return ', '.join(str(o) for o in self.options)
+
 
 class CompositeType(Descriptor):
     @property
@@ -207,7 +229,7 @@ class DiscoveryService(object):
 
 
 class AttributeFactory(object):
-    def __init__(self, *search_directory):
+    def __init__(self, cache, *search_directory):
         """
         Args:
             search_directory: Directories that are searched for template files.
@@ -224,19 +246,7 @@ class AttributeFactory(object):
             type = self.build_composite_type(path, name)
             self.cache[name] = type
 
-    def build_simple_attribute(self, key, cfg):
-        """ Returns Attribute"""
-        import copy
-        type = cfg.pop('type')
-        required = cfg.pop('required')
-        # TODO requires cfg.pop('requires')
-        default = cfg.pop('default', None)
-        help = cfg.pop('help', None)
-        if len(cfg) != 0:
-            raise ValueError("The config still contains values", cfg)
-        type = copy.deepcopy(self.cache[type])
-        return Attribute(key, type, required, default, help)
-
+    # TODO this is still mixed up
     def build_composite_type(self, path, name):
         if path.endswith('.yaml'):
             cfg = read_from_yaml(path)
@@ -248,15 +258,31 @@ class AttributeFactory(object):
             type.add_attribute(key, attribute)
         return type
 
-    def get_descriptor(self, identifier):
-        return self.cache[identifier]
+    def build_simple_attribute(self, key, cfg):
+        """ Returns Attribute"""
+        import copy
+        if "options" in cfg:
+            type = OneOf(key)
+            type.add_options(cfg.pop('options'))
+        else:
+            type = cfg.pop('type')
+            type = copy.deepcopy(self.cache[type])
+
+        required = cfg.pop('required')
+        # TODO requires cfg.pop('requires')
+        default = cfg.pop('default', None)
+        help = cfg.pop('help', None)
+        if len(cfg) != 0:
+            raise ValueError("The config still contains values", cfg)
+        return Attribute(key, type, required, default, help)
 
     def __str__(self):
         return str(self.cache)
 
 
+
 class ConfigTemplate(object):
-    def __init__(self, name, cache=cache):
+    def __init__(self, cache, name):
         self.name = name
         self.descriptor = cache[name]
 

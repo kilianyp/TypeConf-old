@@ -1,7 +1,8 @@
-from config_template import ConfigTemplate, AttributeFactory
+from config_template import ConfigTemplate, AttributeFactory, Cache
 
-factory = AttributeFactory('descriptors')
-config_template = ConfigTemplate('class1')
+cache = Cache()
+factory = AttributeFactory(cache, 'descriptors')
+config_template = ConfigTemplate(cache, 'class1')
 
 # argparser = experiment_descriptor.get_argparser()
 print(config_template.descriptor)

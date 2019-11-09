@@ -7,6 +7,7 @@ AttributeBool:
     type: bool
     required: true
     help: "testbool"
+    default: False
 
 AttributeString:
     type: string
@@ -21,6 +22,11 @@ AttributeInt4:
     type: int
     required: false
     default: 0
+
+AttributeOneOf:
+    required: false
+    default: "a"
+    options: ["a", "b"]
 
 AttributeClass:
     type: class2
