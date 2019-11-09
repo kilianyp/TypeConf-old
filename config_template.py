@@ -255,21 +255,24 @@ class AttributeFactory(object):
             cfg = read_from_yaml(path)
 
         type = CompositeType(name)
-
         for key, values in cfg.items():
-            attribute = self.build_simple_attribute(key, values)
+            attribute = self.build_attribute(key, values)
             type.add_attribute(key, attribute)
         return type
 
-    def build_simple_attribute(self, key, cfg):
+    def build_attribute(self, key, cfg):
         """ Returns Attribute"""
         import copy
-        if "options" in cfg:
-            type = OneOf(key)
-            type.add_options(cfg.pop('options'))
+        type = cfg.pop('type').lower()
+
+        if type == "oneof":
+            descriptor = OneOf(key)
+            descriptor.add_options(cfg.pop('options'))
+        elif type == "datatype":
+            descriptor = copy.deepcopy(self.cache[cfg.pop('dtype')])
         else:
-            type = cfg.pop('type')
-            type = copy.deepcopy(self.cache[type])
+            # TODO differentiate between errors in templates and config
+            raise ValueError("Error in Template {}: unknown type {}".format(key, type))
 
         required = cfg.pop('required')
         # TODO requires cfg.pop('requires')
@@ -277,11 +280,10 @@ class AttributeFactory(object):
         help = cfg.pop('help', None)
         if len(cfg) != 0:
             raise ValueError("The config still contains values", cfg)
-        return Attribute(key, type, required, default, help)
+        return Attribute(key, descriptor, required, default, help)
 
     def __str__(self):
         return str(self.cache)
-
 
 
 class ConfigTemplate(object):

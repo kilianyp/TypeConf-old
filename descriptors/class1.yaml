@@ -1,36 +1,43 @@
 AttributeInt:
-    type: int
+    dtype: int
     required: true
     help: "testint"
+    type: "datatype"
 
 AttributeBool:
-    type: bool
+    dtype: bool
     required: true
     help: "testbool"
     default: False
+    type: "datatype"
 
 AttributeString:
-    type: string
+    dtype: string
     required: true
     help: "teststring"
+    type: "datatype"
 
 AttributeInt2:
-    type: int
+    dtype: int
     required: true
+    type: "datatype"
 
 AttributeInt4:
-    type: int
+    dtype: int
     required: false
     default: 0
+    type: "datatype"
 
 AttributeOneOf:
     required: false
     default: "a"
     options: ["a", "b"]
+    type: "oneof"
 
 AttributeClass:
-    type: class2
+    dtype: class2
     required: false
     help: "test2"
     default: false
+    type: "datatype"
 
