@@ -34,6 +34,12 @@ AttributeOneOf:
     options: ["a", "b"]
     type: "oneof"
 
+AttributeConst:
+    required: false
+    type: "const"
+    value: 5
+
+
 AttributeClass:
     dtype: class2
     required: false

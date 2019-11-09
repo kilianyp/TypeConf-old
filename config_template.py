@@ -154,6 +154,23 @@ class OneOf(Descriptor):
         return ', '.join(str(o) for o in self.options)
 
 
+class Const(Descriptor):
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        raise ValueError("{} is const, cannot set value {}".format(self.name, value))
+
+    def __init__(self, name, value):
+        super().__init__(name)
+        self._value = value
+        self.isset = True
+
+    def parse(self):
+        return True
+
 class CompositeType(Descriptor):
     @property
     def value(self):
@@ -270,6 +287,8 @@ class AttributeFactory(object):
             descriptor.add_options(cfg.pop('options'))
         elif type == "datatype":
             descriptor = copy.deepcopy(self.cache[cfg.pop('dtype')])
+        elif type == "const":
+            descriptor = Const(key, cfg.pop('value'))
         else:
             # TODO differentiate between errors in templates and config
             raise ValueError("Error in Template {}: unknown type {}".format(key, type))
