@@ -390,7 +390,9 @@ class AttributeFactory(object):
         default = cfg.pop('default', None)
         help = cfg.pop('help', None)
         if len(cfg) != 0:
-            raise ValueError("The config still contains values", cfg)
+            raise ValueError(
+                    "The config for {} contains unrecognized settings: {}"
+                    .format(key, cfg))
         return Attribute(key, descriptor, required, default, help)
 
     def __str__(self):
@@ -406,6 +408,7 @@ def dot2dict(dotstring, value):
         last_dic = last_dic[l]
     last_dic[levels[-1]] = value
     return base_dic
+
 
 class ConfigTemplate(object):
     def __init__(self, cache, name):
