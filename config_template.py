@@ -120,9 +120,13 @@ class IntType(Descriptor):
         super().__init__(*args, **kwargs)
 
     def parse(self):
-        if not isinstance(self.value, int):
-            raise ValueError("Expected Int")
-        return True
+        if isinstance(self.value, int):
+            return True
+        # TODO better check for string
+        if isinstance(self.value, str) and self.value.isdigit():
+            self.value = int(self.value)
+            return True
+        raise ValueError("Expected Int")
 
 
 class BoolType(Descriptor):
@@ -393,6 +397,16 @@ class AttributeFactory(object):
         return str(self.cache)
 
 
+def dot2dict(dotstring, value):
+    levels = dotstring.split('.')
+    base_dic = {}
+    last_dic = base_dic
+    for l in levels[:-1]:
+        last_dic[l] = {}
+        last_dic = last_dic[l]
+    last_dic[levels[-1]] = value
+    return base_dic
+
 class ConfigTemplate(object):
     def __init__(self, cache, name):
         self.name = name
@@ -401,6 +415,20 @@ class ConfigTemplate(object):
     def fill_from_yaml(self, yaml_file):
         cfg = read_from_yaml(yaml_file)
         return self.fill_from_cfg(cfg)
+
+    # TODO Think about grid search
+    def fill_from_cl(self, unknown_args):
+        for arg in unknown_args:
+            path, sep, value = arg.partition("=")
+            # could be split
+            if sep == '=':
+                nested = dot2dict(path, value)
+                print(nested)
+                self.descriptor.value = nested
+            else:
+                raise ValueError
+
+        return 
 
     def fill_from_cfg(self, cfg):
         self.descriptor.value = cfg
