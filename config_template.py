@@ -129,18 +129,36 @@ class IntType(Descriptor):
         raise ValueError("Expected Int")
 
 
+class FloatAttribute(Descriptor):
+    @staticmethod
+    def isfloat(value):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
+
+    def parse(self):
+        if isinstance(self.value, float):
+            return True
+        if isinstance(self.value, str) and self.isfloat(self.value):
+            self.value = float(self.value)
+            return True
+        raise ValueError("Expected Float")
+
+
 class BoolType(Descriptor):
     def parse(self):
-        if not isinstance(self.value, bool):
-            raise ValueError("Expected Boolean")
-        return True
+        if isinstance(self.value, bool):
+            return True
+        if self.value.lower() == "false":
+            self.value = False
+            return True
+        if self.value.lower() == "true":
+            self.value = True
+            return True
 
-
-class FloatAttribute(Descriptor):
-    def parse(self):
-        if not isinstance(self.value, float):
-            raise ValueError("Expected Float")
-        return True
+        raise ValueError("Expected Boolean")
 
 
 class StringAttribute(Descriptor):

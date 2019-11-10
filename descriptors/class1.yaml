@@ -34,6 +34,11 @@ AttributeOneOf:
     options: ["a", "b"]
     type: "oneof"
 
+AttributeFloat:
+    required: false
+    dtype: "float"
+    type: "datatype"
+
 AttributeConst:
     required: false
     type: "const"

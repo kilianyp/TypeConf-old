@@ -3,6 +3,7 @@ AttribueBool: True
 AttributeBool: True
 AttributeString: "test"
 AttributeInt2: 15
+AttributeFloat: 3.14
 AttributeFolder:
     class3:
         Attribute1: 5
