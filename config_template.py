@@ -82,11 +82,11 @@ class Attribute(object):
         if not self.descriptor.isset:
             if self.required:
                 raise ValueError("Value not set %s", self.name, self.descriptor)
-            logger.warning("Setting default value for %s", self.name)
             # TODO default must be set WHAT if it wasnt set
             if self.default == MAGIC_DEFAULT_VALUE:
                 raise ValueError("Value was not set but also no default value for {}".format(self.name))
             self.descriptor.value = self.default
+            logger.warning("Setting default value for %s to %s", self.name, self.default)
         return self.descriptor.parse()
 
     def __str__(self):
