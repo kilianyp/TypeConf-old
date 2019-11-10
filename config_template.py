@@ -272,7 +272,7 @@ class CompositeType(Descriptor):
             attribute.descriptor.value = value.pop(key)
 
         if len(value) != 0:
-            logger.warning("There are unused keys in this config: %s", " ,".join(value.keys()))
+            logger.warning("There are unused keys in this config: %s", ", ".join(value.keys()))
 
     def __init__(self, name):
         super().__init__(name)
