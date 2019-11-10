@@ -226,9 +226,9 @@ class OneOfType(Descriptor):
         return sub.parse()
 
     def to_config(self):
-        sub = list(self.value.keys())[0]
-        sub = self.subtypes[sub]
-        return sub.to_config()
+        subkey = list(self.value.keys())[0]
+        sub = self.subtypes[subkey]
+        return {subkey: sub.to_config()}
 
 
 class MultipleOfType(Descriptor):
