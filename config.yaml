@@ -3,5 +3,8 @@ AttribueBool: True
 AttributeBool: True
 AttributeString: "test"
 AttributeInt2: 15
+AttributeFolder:
+    class3:
+        Attribute1: 5
 AttributeClass:
     Attribute1: 10

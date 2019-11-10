@@ -1,0 +1,11 @@
+Attribute1:
+    dtype: int
+    required: False
+    default: 0
+    type: datatype
+
+Attribute2:
+    dtype: int
+    required: False
+    default: 0
+    type: datatype

@@ -3,10 +3,12 @@ import logging
 import json
 
 logger = logging.getLogger()
+
 SUPPORTED_FILETYPES = ['.yaml', '.json']
 IGNORE = ["__pycache__", './']
 DEFAULT_DESCRIPTOR_PATH = 'protos'
 
+MAGIC_SPLIT_NAME = '.'
 
 def discover(basepath=DEFAULT_DESCRIPTOR_PATH, prefix=''):
     """
@@ -25,7 +27,7 @@ def discover(basepath=DEFAULT_DESCRIPTOR_PATH, prefix=''):
         path = os.path.join(basepath, f)
 
         if os.path.isdir(path):
-            for returnvalue in discover(path, prefix + f + '.'):
+            for returnvalue in discover(path, prefix + f + MAGIC_SPLIT_NAME):
                 yield returnvalue
             yield path, prefix + f
         elif os.path.isfile(path):
@@ -42,9 +44,20 @@ class Cache(object):
         self._cache = {}
 
     def __setitem__(self, key, value):
-        self._cache[key] = value
+        cache_level = self._cache
+        key_levels = key.split(MAGIC_SPLIT_NAME)
+        if len(key_levels) > 1:
+            # create structure until the last one
+            for p in key_levels[:-1]:
+                # ASSERT cache level is cache
+                if p not in cache_level:
+                    cache_level[p] = {}
+                cache_level = cache_level[p]
+            key = key_levels[-1]
+        cache_level[key] = value
 
     def __getitem__(self, key):
+        # TODO nested folders as in set item
         return self._cache[key]
 
     def __str__(self):
@@ -134,6 +147,9 @@ class StringAttribute(Descriptor):
 
 
 class OneOf(Descriptor):
+    """
+    One Of value
+    """
     def __init__(self, name):
         super().__init__(name)
         self.options = set()
@@ -170,6 +186,66 @@ class Const(Descriptor):
 
     def parse(self):
         return True
+
+
+class OneOfType(Descriptor):
+    """
+    One of Type
+    MasterType:
+        SubType:
+            a1: 0
+    """
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        # for now set all subtypes even though only one allowed
+        if len(value.keys()) == 0:
+            raise ValueError("{}: There are no keys in {}".format(self.name, value))
+        # only set when we have atleast one value
+        self._value = value
+        self.isset = True
+        for k, v in value.items():
+            if k not in self.subtypes:
+                raise ValueError("Unknown type {} in {}. Choose from {}.".format(k, self.name, str(self.subtypes.keys())))
+            self.subtypes[k].value = v
+
+    def __init__(self, name, subtypes):
+        super().__init__(name)
+        assert len(subtypes) > 0, "At least on subtype is necessary"
+        self.subtypes = subtypes
+
+    def parse(self):
+        if len(self.value.keys()) > 1:
+            raise ValueError("Choose only one from")
+
+        sub = list(self.value.keys())[0]
+        sub = self.subtypes[sub]
+        return sub.parse()
+
+    def to_config(self):
+        sub = list(self.value.keys())[0]
+        sub = self.subtypes[sub]
+        return sub.to_config()
+
+
+class MultipleOfType(Descriptor):
+    """
+    Multiple of Type
+    MasterType:
+        SubType1:
+            a1: 0
+        SubType2:
+            a1: 0
+    """
+    def __init__(self, name):
+        super().__init__(name)
+        raise NotImplementedError()
+
+# TODO parsing is spread between building, value setting and parse function
+# TODO try to do everything in parse
 
 class CompositeType(Descriptor):
     @property
@@ -262,20 +338,32 @@ class AttributeFactory(object):
         self.cache['bool'] = BoolType('bool')
 
         for path, name in discover(search_directory[0]):
-            logger.debug("Found %s in %s", name, path)
-            type = self.build_composite_type(path, name)
+            print("Found %s in %s" % (name, path))
+            if os.path.isdir(path):
+                type = self.build_folder_type(name)
+            else:
+                if path.endswith('.yaml'):
+                    cfg = read_from_yaml(path)
+                else:
+                    raise FileNotFoundError(path)
+
+                if cfg is None:
+                    logger.warning("Skipping %s (%s)", name, path)
+                    continue
+                type = self.build_composite_type(cfg, name)
             self.cache[name] = type
 
     # TODO this is still mixed up
-    def build_composite_type(self, path, name):
-        if path.endswith('.yaml'):
-            cfg = read_from_yaml(path)
-
+    # we have attributes, and multiple descriptor types
+    def build_composite_type(self, cfg, name):
         type = CompositeType(name)
         for key, values in cfg.items():
             attribute = self.build_attribute(key, values)
             type.add_attribute(key, attribute)
         return type
+
+    def build_folder_type(self, name):
+        return OneOfType(name, self.cache[name])
 
     def build_attribute(self, key, cfg):
         """ Returns Attribute"""

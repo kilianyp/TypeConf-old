@@ -39,6 +39,11 @@ AttributeConst:
     type: "const"
     value: 5
 
+AttributeFolder:
+    required: true
+    dtype: classes
+    type: "datatype"
+
 
 AttributeClass:
     dtype: class2
