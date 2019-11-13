@@ -1,5 +1,5 @@
 Attribute1:
-    dtype: as
+    dtype: int
     required: true
     help: "test1"
     default: 0

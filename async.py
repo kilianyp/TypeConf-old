@@ -5,6 +5,7 @@ import collections
 
 logger = logging.getLogger()
 available_types = set(['int', 'string', 'bool', 'float'])
+finished_types = set()
 
 dependencies = collections.defaultdict(set)
 
@@ -67,14 +68,15 @@ async def build_type(name, cfg, events):
         event = events.pop(name)
         event.set()
     available_types.add(name)
+    finished_types.add(name)
     print("finished {}".format(name))
 
 
+import tqdm
 async def main():
     events = {}
     tasks = []
 
-    # WARNING if nested types take too long this will not work
     started_types = set()
 
     for path, name in discover('descriptors'):
@@ -84,6 +86,7 @@ async def main():
             if cfg is None:
                 logger.warning("Skipping %s (%s)", name, path)
                 continue
+            # TODO WARNING if nested types take too long this will not work
             started_types.add(name)
             task = asyncio.create_task(build_type(name, cfg, events))
             tasks.append(task)
@@ -92,16 +95,25 @@ async def main():
                 event = events.pop(name)
                 event.set()
             print("adding {}".format(name))
+            started_types.add(name)
             available_types.add(name)
+            finished_types.add(name)
             # continue
 
-    not_finished = started_types - available_types
+    print("discovered {}".format(len(started_types)))
+    print(len(started_types), len(finished_types))
+    print(started_types, finished_types)
+    not_finished = started_types - finished_types
     counter = 0
+    pbar = tqdm.tqdm(total=len(started_types))
+    curr = 0
     while len(not_finished) != 0:
-        print("finished so far", available_types)
-        print("Not finished", not_finished)
+        pbar.write("finished so far {}".format(finished_types))
+        pbar.write("Not finished {}".format(not_finished))
+        pbar.update(len(finished_types) - curr)
+        curr = len(finished_types)
         await asyncio.sleep(1)
-        not_finished = started_types - available_types
+        not_finished = started_types - finished_types
         counter += 1
         if counter == 5:
             raise ValueError("One type seems not to finish")

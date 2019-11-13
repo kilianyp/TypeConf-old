@@ -1,5 +1,5 @@
 Attribute1:
-    dtype: class4
+    dtype: classes.class4
     required: true
     help: "test1"
     default: 0
