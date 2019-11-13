@@ -69,9 +69,14 @@ async def build_type(name, cfg, events):
     available_types.add(name)
     print("finished {}".format(name))
 
+
 async def main():
     events = {}
     tasks = []
+
+    # WARNING if nested types take too long this will not work
+    started_types = set()
+
     for path, name in discover('descriptors'):
         print("found {} {}".format(name, path))
         if path.endswith('.yaml'):
@@ -79,6 +84,7 @@ async def main():
             if cfg is None:
                 logger.warning("Skipping %s (%s)", name, path)
                 continue
+            started_types.add(name)
             task = asyncio.create_task(build_type(name, cfg, events))
             tasks.append(task)
         else:
@@ -87,10 +93,19 @@ async def main():
                 event.set()
             print("adding {}".format(name))
             available_types.add(name)
-
-
             # continue
-    await asyncio.gather(*tasks)
+
+    not_finished = started_types - available_types
+    counter = 0
+    while len(not_finished) != 0:
+        print("finished so far", available_types)
+        print("Not finished", not_finished)
+        await asyncio.sleep(1)
+        not_finished = started_types - available_types
+        counter += 1
+        if counter == 5:
+            raise ValueError("One type seems not to finish")
+            break
     print("finished")
 
 asyncio.run(main())

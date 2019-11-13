@@ -1,0 +1,6 @@
+Attribute1:
+    dtype: as
+    required: true
+    help: "test1"
+    default: 0
+    type: datatype
