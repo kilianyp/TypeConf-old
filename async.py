@@ -1,125 +1,149 @@
+"""
+Builds types found in files, folders etc.
+Current solution is asynchronous to be independent
+of order.
+TODO better to create a static tree that can be analyzed?
+"""
 from config_template import discover, read_from_yaml
 import asyncio
 import logging
 import collections
+import tqdm
 
 logger = logging.getLogger()
-available_types = set(['int', 'string', 'bool', 'float'])
-finished_types = set()
-
-dependencies = collections.defaultdict(set)
-
-async def wait(name, event):
-    print("waiting on dependcy {name}".format(name=name))
-    # TODO is this safe or better mutex
-    await event.wait()
-    print("Done waiting for {name}".format(name=name))
 
 
-def add_down(typ, dependency):
-    # type depends on dependency and its childs
-    if typ in dependency:
-        raise ValueError("cycle")
-    for d in dependencies[dependency]:
-        if d in dependencies[typ]:
-            continue
-        dependencies[typ].add(d)
-        add_down(typ, d)
+class DependencyTree(object):
+    """Pretty ugly, probably can do nicer"""
+    def __init__(self):
+        self.dependencies = collections.defaultdict(set)
 
-
-def add_up(typ, dependency):
-    # types that depend on this type also depend on dependancy
-    if typ == dependency:
-        raise ValueError("cycle")
-    for d in dependencies:
-        if typ in d:
-            if dependency in dependencies[d]:
+    def add_down(self, typ, dependency):
+        # type depends on dependency and its childs
+        if typ in dependency:
+            raise ValueError("cycle")
+        for d in self.dependencies[dependency]:
+            if d in self.dependencies[typ]:
                 continue
-            dependencies[d].add(dependency)
-            add_up(typ, d)
+            self.dependencies[typ].add(d)
+            self.add_down(typ, d)
 
-# we have a cycle if a type has dependcies that depend on the type
-# its easier to pass down dependcies of parent
-async def build_type(name, cfg, events):
-    tasks = []
-    print("Start building {}".format(name))
-    for key, value in cfg.items():
-        if value['type'] == 'datatype' and value['dtype'] not in available_types:
-            dependency = value['dtype']
-            # loops are only now critical
-            dependencies[name].add(dependency)
-            add_up(name, dependency)
-            add_down(name, dependency)
-            # we must wait for the type to be available
-            # is someone else already waiting
-            if dependency in events:
-                event = events[dependency]
-            else:
-                event = asyncio.Event()
-                events[dependency] = event
-            waiter_task = asyncio.create_task(wait(dependency, event))
-            # error when the dependency depends on this
-            tasks.append(waiter_task)
-    # wait for all dependencies to solve
-    print(dependencies)
-    await asyncio.gather(*tasks)
-    # now build type
-    if name in events:
-        event = events.pop(name)
-        event.set()
-    available_types.add(name)
-    finished_types.add(name)
-    print("finished {}".format(name))
+    def add_up(self, typ, dependency):
+        # types that depend on this type also depend on dependancy
+        if typ == dependency:
+            raise ValueError("cycle")
+        for d in self.dependencies:
+            if typ in d:
+                if dependency in self.dependencies[d]:
+                    continue
+                self.dependencies[d].add(dependency)
+                self.add_up(typ, d)
+
+    def add(self, typ, dependency):
+        self.dependencies[typ].add(dependency)
+        self.add_down(typ, dependency)
+        self.add_up(typ, dependency)
 
 
-import tqdm
-async def main():
-    events = {}
-    tasks = []
+class TypeFactory(object):
+    def __init__(self):
+        self.started_types = set()
+        self.finished_types = set()
+        self.available_types = set(['int', 'string', 'bool', 'float'])
 
-    started_types = set()
+        self.registered_cfgs = {}
 
-    for path, name in discover('descriptors'):
-        print("found {} {}".format(name, path))
+        self.tasks = []
+        self.events = collections.defaultdict(asyncio.Event)
+
+        self.types = {}
+        self.dependecy_tree = DependencyTree()
+
+    def register_type(self, name, type):
+        self.types[name] = type
+
+    def register_cfg(self, name, cfg):
+        self.registered_cfgs[name] = cfg
+
+    def register_directory(self, name, path):
+        self.directories[name] = path
+
+        for path, name in discover('descriptors'):
+            print("found {} {}".format(name, path))
+
+    def register_file(self, name, path):
         if path.endswith('.yaml'):
             cfg = read_from_yaml(path)
-            if cfg is None:
-                logger.warning("Skipping %s (%s)", name, path)
-                continue
-            # TODO WARNING if nested types take too long this will not work
-            started_types.add(name)
-            task = asyncio.create_task(build_type(name, cfg, events))
-            tasks.append(task)
         else:
-            if name in events:
-                event = events.pop(name)
+            raise ValueError("Unknown File Ending")
+
+        if cfg is None:
+            logger.warning("Skipping %s (%s)", name, path)
+            return
+        self.register_cfg(name, cfg)
+
+    def build_directories(self):
+        for name, directory in self.register_directories.items():
+            event = self.events.pop(name, None)
+            if event is not None:
                 event.set()
-            print("adding {}".format(name))
-            started_types.add(name)
-            available_types.add(name)
-            finished_types.add(name)
-            # continue
+        self.available_types.add(name)
 
-    print("discovered {}".format(len(started_types)))
-    print(len(started_types), len(finished_types))
-    print(started_types, finished_types)
-    not_finished = started_types - finished_types
-    counter = 0
-    pbar = tqdm.tqdm(total=len(started_types))
-    curr = 0
-    while len(not_finished) != 0:
-        pbar.write("finished so far {}".format(finished_types))
-        pbar.write("Not finished {}".format(not_finished))
-        pbar.update(len(finished_types) - curr)
-        curr = len(finished_types)
-        await asyncio.sleep(1)
+    # we have a cycle if a type has dependcies that depend on the type
+    # its easier to pass down dependcies of parent
+    async def build_type(self, name, cfg, events):
+        tasks = []
+        print("Start building {}".format(name))
+        for key, value in cfg.items():
+            if value['type'] == 'datatype' and value['dtype'] not in self.types:
+                dependency = value['dtype']
+                self.dependecy_tree.add(name, dependency)
+                # we must wait for the type to be available
+                # is someone else already waiting
+                event = self.events[dependency]
+                waiter_task = asyncio.create_task(wait(dependency, event))
+                # error when the dependency depends on this
+        # wait for all dependencies to solve
+        print(dependencies)
+        await asyncio.gather(*tasks)
+        # now build type
+        if name in events:
+            event = events.pop(name)
+            event.set()
+        available_types.add(name)
+        finished_types.add(name)
+        print("finished {}".format(name))
+
+    def build_types(self):
+        for name, cfg in self.cfg.items():
+            self.started_types.add(name)
+            task = asyncio.create_task(self.build_type(name, cfg))
+            self.tasks.append(task)
+
+    async def _build(self):
+        print("discovered {}".format(len(started_types)))
+        print(len(started_types), len(finished_types))
+        print(started_types, finished_types)
+        counter = 0
+        pbar = tqdm.tqdm(total=len(started_types))
+        curr = 0
+        MAX_WAIT_T = 5
         not_finished = started_types - finished_types
-        counter += 1
-        if counter == 5:
-            raise ValueError("One type seems not to finish")
-            break
-    print("finished")
+        while len(not_finished) != 0:
+            pbar.write("finished so far {}".format(finished_types))
+            pbar.write("Not finished {}".format(not_finished))
+            pbar.update(len(finished_types) - curr)
+            curr = len(finished_types)
+            await asyncio.sleep(1)
+            not_finished = started_types - finished_types
+            counter += 1
+            if counter == MAX_WAIT_T:
+                raise ValueError("One type seems not to finish")
+                break
+        print("finished")
 
-asyncio.run(main())
 
-
+    def build(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_completion(self._build())
+        loop.close()
