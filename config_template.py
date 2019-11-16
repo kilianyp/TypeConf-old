@@ -4,68 +4,6 @@ import json
 
 logger = logging.getLogger()
 
-SUPPORTED_FILETYPES = ['.yaml', '.json']
-IGNORE = ["__pycache__", './']
-DEFAULT_DESCRIPTOR_PATH = 'protos'
-
-MAGIC_SPLIT_NAME = '.'
-
-def discover(basepath=DEFAULT_DESCRIPTOR_PATH, prefix=''):
-    """
-    Recursively check for supported files
-    we need to first build the ones without dependencies, which are in the subfolders,
-    descriptors on the same level cannot depend on each other
-    we do this by seeing the folder structure hierachically
-    TODO
-    first subfolders before files
-    files in subfolders before subfolder
-    """
-    for f in os.listdir(basepath):
-        if f in IGNORE:
-            continue
-
-        path = os.path.join(basepath, f)
-
-        if os.path.isdir(path):
-            for returnvalue in discover(path, prefix + f + MAGIC_SPLIT_NAME):
-                yield returnvalue
-            yield path, prefix + f
-        elif os.path.isfile(path):
-            for ftype in SUPPORTED_FILETYPES:
-                if f.endswith(ftype):
-                    yield path, prefix + f.rstrip(ftype)
-                    break
-        else:
-            raise RuntimeError("Not supported case TODO")
-
-
-class Cache(object):
-    def __init__(self):
-        self._cache = {}
-
-    def __setitem__(self, key, value):
-        cache_level = self._cache
-        key_levels = key.split(MAGIC_SPLIT_NAME)
-        if len(key_levels) > 1:
-            # create structure until the last one
-            for p in key_levels[:-1]:
-                # ASSERT cache level is cache
-                if p not in cache_level:
-                    cache_level[p] = {}
-                cache_level = cache_level[p]
-            key = key_levels[-1]
-        cache_level[key] = value
-
-    def __getitem__(self, key):
-        # TODO nested folders as in set item
-        return self._cache[key]
-
-    def __str__(self):
-        string = "{} Elements in cache\n".format(len(self._cache))
-        for key, descriptor in self._cache.items():
-            string += "{}: {}\n".format(key, descriptor)
-        string += "a"
-        return string
 
 
 MAGIC_DEFAULT_VALUE = "SC_MAGIC_DEFAULT_VALUE"
@@ -93,79 +31,16 @@ class Attribute(object):
         return "{} {} {} {} {}".format(self.name, self.default, self.required, self.help, self.descriptor.value)
 
 
-class Descriptor(object):
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-        self.isset = True
-
-    def __init__(self, name):
-        self.name = name
-        self._value = None
-        self.isset = False
-
-    def parse(self):
-        raise NotImplementedError()
-
-    def to_config(self):
-        return self.value
-
-
-class IntType(Descriptor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def parse(self):
-        if isinstance(self.value, int):
-            return True
-        # TODO better check for string
-        if isinstance(self.value, str) and self.value.isdigit():
-            self.value = int(self.value)
-            return True
-        raise ValueError("Expected Int")
-
-
-class FloatAttribute(Descriptor):
-    @staticmethod
-    def isfloat(value):
-        try:
-            float(value)
-            return True
-        except ValueError:
-            return False
-
-    def parse(self):
-        if isinstance(self.value, float):
-            return True
-        if isinstance(self.value, str) and self.isfloat(self.value):
-            self.value = float(self.value)
-            return True
-        raise ValueError("Expected Float")
-
-
-class BoolType(Descriptor):
-    def parse(self):
-        if isinstance(self.value, bool):
-            return True
-        if self.value.lower() == "false":
-            self.value = False
-            return True
-        if self.value.lower() == "true":
-            self.value = True
-            return True
-
-        raise ValueError("Expected Boolean")
-
-
-class StringAttribute(Descriptor):
+class EvalType(Descriptor):
     def parse(self):
         if not isinstance(self.value, str):
             raise ValueError("Expected String")
+        self.value = eval(self.value)
         return True
+# class list
+# class listoftype
+# class of nestedtype
+# class of regex
 
 
 class OneOf(Descriptor):
@@ -327,12 +202,6 @@ class CompositeType(Descriptor):
         return Config({key: attribute.descriptor.to_config() for key, attribute in self.attributes.items()})
 
 
-def read_from_yaml(path):
-    import yaml
-    with open(path, 'r') as f:
-        return yaml.load(f, yaml.SafeLoader)
-
-
 class Config(dict):
     """ TODO access per dot.
         print with help"""
@@ -344,6 +213,32 @@ class DiscoveryService(object):
     """Also Update config during run time"""
     """That would actually be amazing"""
     """But would rebuild some objects as well"""
+
+
+# each type can only have a certain set of dependcies
+# but each type can be the dependency of multiple types
+# but what if we do not yet know the depndencies of the dependencies
+# we cannot yet make a conclusion about cycles
+
+# read class if we do not know the type yet continue until we know the type, if we finish error
+
+class TypeTree(object):
+    def __init__(self):
+        self.types = {}
+
+    def add_type(self, node):
+        if node.name in self.types:
+            raise ValueError("Type with name {} already exists.".format(node.name))
+        self.types[node.name] = node
+
+
+class TypeNode(object):
+    def __init__(self, name):
+        self.name = name
+        # what if this type is not built yet
+        self.childs = [] # types this type depends on
+        self.cfg = None
+        self.parents = [] # types that depend on this
 
 
 class AttributeFactory(object):
@@ -358,6 +253,7 @@ class AttributeFactory(object):
         self.cache['string'] = StringAttribute('string')
         self.cache['float'] = FloatAttribute('float')
         self.cache['bool'] = BoolType('bool')
+        self.cache['eval'] = EvalType('eval')
 
         for path, name in discover(search_directory[0]):
             print("Found %s in %s" % (name, path))
@@ -387,6 +283,9 @@ class AttributeFactory(object):
     def build_folder_type(self, name):
         return OneOfType(name, self.cache[name])
 
+    def __str__(self):
+        return str(self.cache)
+
     def build_attribute(self, key, cfg):
         """ Returns Attribute"""
         import copy
@@ -396,6 +295,7 @@ class AttributeFactory(object):
             descriptor = OneOf(key)
             descriptor.add_options(cfg.pop('options'))
         elif type == "datatype":
+            # TODO nice might be to have really a  dynamic class created and instantiate it
             descriptor = copy.deepcopy(self.cache[cfg.pop('dtype')])
         elif type == "const":
             descriptor = Const(key, cfg.pop('value'))
@@ -412,9 +312,6 @@ class AttributeFactory(object):
                     "The config for {} contains unrecognized settings: {}"
                     .format(key, cfg))
         return Attribute(key, descriptor, required, default, help)
-
-    def __str__(self):
-        return str(self.cache)
 
 
 def dot2dict(dotstring, value):
