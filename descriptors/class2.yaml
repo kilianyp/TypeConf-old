@@ -1,15 +1,27 @@
+# Attribute1:
+#     dtype: classes.class4
+#     required: true
+#     help: "test1"
+#     default: 0
+#     type: datatype
+# 
+# Attribute2:
+#     dtype: classes.class4
+#     required: False
+#     help: "test1"
+#     default: 4 + 2
+#     type: datatype
+
 Attribute1:
-    dtype: classes.class4
+    dtype: int
     required: true
     help: "test1"
     default: 0
     type: datatype
 
 Attribute2:
-    dtype: classes.class4
+    dtype: string
     required: False
     help: "test1"
     default: 4 + 2
     type: datatype
-
-

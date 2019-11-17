@@ -6,10 +6,18 @@ import logging
 from base_types import BASE_TYPES
 from attribute import AttributeFactory
 from base_types import Descriptor
+import json
 
 MAGIC_SPLIT_NAME = '.'
 
 logger = logging.getLogger()
+
+
+class Config(dict):
+    """ TODO access per dot.
+        print with help"""
+    def __str__(self):
+        return json.dumps(self, indent=4)
 
 
 class OneOf(Descriptor):
@@ -128,7 +136,9 @@ class CompositeType(Descriptor):
         TODO what about cycles
         """
         # assert that this is a mapping
+        print(self.name, value)
         for key, attribute in self.attributes.items():
+            # if no value for attribute
             if key not in value:
                 continue
             attribute.descriptor.value = value.pop(key)

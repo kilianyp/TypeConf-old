@@ -6,13 +6,6 @@ logger = logging.getLogger()
 MAGIC_DEFAULT_VALUE = "SC_MAGIC_DEFAULT_VALUE"
 
 
-class Config(dict):
-    """ TODO access per dot.
-        print with help"""
-    def __str__(self):
-        return json.dumps(self, indent=4)
-
-
 class Attribute(object):
     def __init__(self, name, descriptor, required, default=MAGIC_DEFAULT_VALUE, help=""):
         self.name = name
