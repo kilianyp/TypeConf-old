@@ -46,14 +46,19 @@ AttributeConst:
 
 AttributeFolder:
     required: true
-    dtype: classes
     type: "datatype"
-
+    dtype: classes
 
 AttributeClass:
-    dtype: class2
     required: false
     help: "test2"
     default: false
     type: "datatype"
+    dtype: class2
 
+Attributeeval:
+    dtype: eval
+    required: False
+    help: "test1"
+    default: 4 + 2
+    type: datatype

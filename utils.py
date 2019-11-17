@@ -1,6 +1,5 @@
 import os
 SUPPORTED_FILETYPES = ['.yaml', '.json']
-MAGIC_SPLIT_NAME = '.'
 DEFAULT_DESCRIPTOR_PATH = 'protos'
 IGNORE_FOLDERS = ["__pycache__", './']
 
@@ -8,7 +7,18 @@ FILE_ENUM = 1
 DIR_ENUM = 2
 
 
-def discover(basepath=DEFAULT_DESCRIPTOR_PATH, prefix=''):
+def dot2dict(dotstring, value):
+    levels = dotstring.split('.')
+    base_dic = {}
+    last_dic = base_dic
+    for l in levels[:-1]:
+        last_dic[l] = {}
+        last_dic = last_dic[l]
+    last_dic[levels[-1]] = value
+    return base_dic
+
+
+def discover(basepath=DEFAULT_DESCRIPTOR_PATH, structure=[]):
     """
     Recursively check for supported files
     we need to first build the ones without dependencies, which are in the subfolders,
@@ -25,13 +35,18 @@ def discover(basepath=DEFAULT_DESCRIPTOR_PATH, prefix=''):
         path = os.path.join(basepath, f)
 
         if os.path.isdir(path):
-            for returnvalue in discover(path, prefix + f + MAGIC_SPLIT_NAME):
+            # return subfiles before parent folder!
+            sub_structure = structure.copy()
+            sub_structure.append(f)
+            for returnvalue in discover(path, sub_structure):
                 yield returnvalue
-            yield path, prefix + f, DIR_ENUM
+            yield path, sub_structure, DIR_ENUM
         elif os.path.isfile(path):
             for ftype in SUPPORTED_FILETYPES:
                 if f.endswith(ftype):
-                    yield path, prefix + f.rstrip(ftype), FILE_ENUM
+                    sub_structure = structure.copy()
+                    sub_structure.append(f.rstrip(ftype))
+                    yield path, sub_structure, FILE_ENUM
                     break
         else:
             raise RuntimeError("Not supported case TODO")

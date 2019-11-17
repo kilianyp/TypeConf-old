@@ -5,7 +5,7 @@ AttributeString: "test"
 AttributeInt2: 15
 AttributeFloat: 3.14
 AttributeFolder:
-    class3:
+    classes.class3:
         Attribute1: 5
 AttributeClass:
     Attribute1: 10

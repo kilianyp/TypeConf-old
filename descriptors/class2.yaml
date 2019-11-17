@@ -5,3 +5,11 @@ Attribute1:
     default: 0
     type: datatype
 
+Attribute2:
+    dtype: classes.class4
+    required: False
+    help: "test1"
+    default: 4 + 2
+    type: datatype
+
+

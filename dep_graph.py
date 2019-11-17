@@ -15,7 +15,7 @@ class TypeNode(object):
         """
         self.dependency_list = dependency_list
         self.name = name
-        self.cfg = None
+        self.cfg = cfg
 
 
 class DependencyGraph(object):
@@ -32,17 +32,19 @@ class DependencyGraph(object):
         return self.types[name]
 
     def get_dep_order(self, name, parents=set()):
+        # we need a unique copy for this level
+        parents = parents.copy()
         if name not in self.types:
             raise ValueError("Unknown type {}. Required by one of {}".format(name, parents))
         node = self.types[name]
 
         if name in parents:
             raise ValueError("Cycle", name, parents)
-        parents.add(name)
 
+        parents.add(name)
         ordered_deps = OrderedSet()
         for dep in node.dependency_list:
-            ordered_deps.union(self.get_dep_order(dep, parents.copy()))
+            ordered_deps.union(self.get_dep_order(dep, parents))
 
         ordered_deps.union(node.dependency_list)
         return ordered_deps

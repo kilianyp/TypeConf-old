@@ -21,9 +21,6 @@ class Descriptor(object):
 
 
 class IntType(Descriptor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     def parse(self):
         if isinstance(self.value, int):
             return True
@@ -73,9 +70,24 @@ class StringType(Descriptor):
         return True
 
 
+class EvalType(Descriptor):
+    def parse(self):
+        if not isinstance(self.value, str):
+            raise ValueError("Expected String")
+        self.value = eval(self.value)
+        return True
+
+
 BASE_TYPES = {
     'int': IntType,
     'float': FloatType,
     'bool': BoolType,
-    'string': StringType
+    'string': StringType,
+    'eval': EvalType
 }
+
+
+# class list
+# class listoftype
+# class of nestedtype
+# class of regex
