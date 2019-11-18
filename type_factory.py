@@ -257,41 +257,45 @@ class TypeFactory(object):
             self.types[node.name] = self.build_from_node(node)
         return self.types[name]
 
-    def build_type(self, name, cfg):
-        type = cfg.pop('type').lower()
+    def build_type(self, type, name, cfg):
         if type == "oneof":
             descriptor = OneOf(name)
             descriptor.add_options(cfg.pop('options'))
         elif type == "datatype":
-            # TODO nice might be to have really a  dynamic class created and instantiate it
-            # TODO problem is because if we don't copy it is going to 
-            # overwrite value
+            # this type exists because of dependency analysis
             descriptor = self.get(cfg.pop('dtype'))
         elif type == "const":
             descriptor = Const(name, cfg.pop('value'))
-        else:
+        elif type == "one_of_type":
+            # Folder
+            subtypes = {}
+            for dep in cfg['subtypes']:
+                subtypes[dep] = self.get(dep)
+            descriptor = OneOfType(name, subtypes)
+        elif type == "composite_type":
+            descriptor = CompositeType(name)
+            for key, values in cfg.items():
+                try:
+                    type_name = values.pop('type')
+                    type = self.build_type(type_name, key, values)
+                    attribute = AttributeFactory.build(key, type, values)
+                except:
+                    print(key, values, name)
+                    raise
+                descriptor.add_attribute(key, attribute)
             # TODO differentiate between errors in templates and config
+        else:
             raise ValueError("Error in Template {}: unknown type {}".format(name, type))
         return descriptor
 
     def build_from_node(self, node):
         cfg = node.cfg
         if cfg is None:
-            subtypes = {}
-            for dep in node.dependency_list:
-                subtypes[dep] = self.get(dep)
-            descriptor = OneOfType(node.name, subtypes)
+            cfg = {'subtypes': node.dependency_list}
+            type_name = "one_of_type"
         else:
-            descriptor = CompositeType(node.name)
-            for key, values in cfg.items():
-                try:
-                    typ = self.build_type(key, values)
-                    attribute = AttributeFactory.build(key, typ, values)
-                except:
-                    print(node.name)
-                    raise
-                descriptor.add_attribute(key, attribute)
-        return descriptor
+            type_name = "composite_type"
+        return self.build_type(type_name, node.name, cfg)
 
     def get(self, name):
         import copy
