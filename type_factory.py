@@ -7,6 +7,7 @@ from base_types import BASE_TYPES
 from attribute import AttributeFactory
 from base_types import Descriptor
 import json
+import os
 
 MAGIC_SPLIT_NAME = '.'
 
@@ -179,6 +180,52 @@ class CompositeType(Descriptor):
 
     def to_config(self):
         return Config({key: attribute.descriptor.to_config() for key, attribute in self.attributes.items()})
+
+
+class FileType(Descriptor):
+    def __init__(self, name, overwrite=False, make_path=True):
+        self.__init__(name)
+        self.overwrite = overwrite
+        self.make_path = make_path
+
+    def parse(self):
+        if os.path.isfile(self.value):
+            if self.overwrite:
+                return True
+            else:
+                return False
+        if self.value.endswith(os.path.sep):
+            raise ValueError("Passed a folder")
+            return False
+        if os.path.isdir(self.value):
+            raise ValueError("A Folder with this name exits")
+            return False
+        path = os.path.dirname()
+        if self.make_path:
+            u.make_path(self.value)
+            return True
+        else:
+            return raise ValueError("Path was not created")
+
+
+
+class FolderType(Descriptor):
+    def __init__(self, make_path=True):
+        self.make_path = path
+    def parse(self):
+        if os.path.isdir(self.value):
+            return True
+        if os.path.isfile(path):
+            raise ValueError("Is File")
+            return False
+
+        if self.make_path:
+            os.makedirs(self.value)
+            return True
+        raise ValueError("Path does not exist and was not created")
+        return False
+
+
 
 
 class FileTree(object):
