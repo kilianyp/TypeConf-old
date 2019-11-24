@@ -1,0 +1,64 @@
+AttributeInt:
+    dtype: int
+    required: true
+    help: "testint"
+    type: "datatype"
+
+AttributeBool:
+    dtype: bool
+    required: true
+    help: "testbool"
+    default: False
+    type: "datatype"
+
+AttributeString:
+    dtype: string
+    required: true
+    help: "teststring"
+    type: "datatype"
+
+AttributeInt2:
+    dtype: int
+    required: true
+    type: "datatype"
+
+AttributeInt4:
+    dtype: int
+    required: false
+    default: 0
+    type: "datatype"
+
+AttributeOneOf:
+    required: false
+    default: "a"
+    options: ["a", "b"]
+    type: "oneof"
+
+AttributeFloat:
+    required: false
+    dtype: "float"
+    type: "datatype"
+
+AttributeConst:
+    required: false
+    type: "const"
+    value: 5
+
+AttributeFolder:
+    required: true
+    type: "datatype"
+    dtype: classes
+
+AttributeClass:
+    required: false
+    help: "test2"
+    default: false
+    type: "datatype"
+    dtype: class2
+
+Attributeeval:
+    dtype: eval
+    required: False
+    help: "test1"
+    default: 4 + 2
+    type: datatype
