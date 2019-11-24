@@ -1,36 +1,33 @@
-# A typesafe, hierachical config for python using templates
-This is not the first python config library that claims to be typesafe
-[1](https://github.com/beetbox/confuse),
-[2](https://github.com/chimpler/pyhocon).
-These libraries require to specify the type during runtime.
-In some circumstances, however, it is better to be able to guarantee a correct configuration 
-before the actual routine starts.
-This allows to avoid costly mistakes where the model cannot be safed because of the wrong type.
+# A typesafe, hierarchical configuration for python using templates
+The idea of this project is that you can define a configuration that is parsed before the actual
+program is run.
+Therefore, no unwanted surprises during the run of the program should happen.
+This is in contrast to other typesafe libraries
+([1](https://github.com/beetbox/confuse),
+[2](https://github.com/chimpler/pyhocon))
+that check the type when it is fetched from the configuration.
 
-So why not just code a check in the beginning?
-Creating templates allows to store all default values and 
-their corresponding types neatly for easy checking.
-Furthermore, the templates are reusable.
+This is designed in particular for setups that require longer calculations before saving
+the current progress (for example ML).
+
+Furthermore, it tries to help maintain up-to-date configurations that still work despite
+new configuration options.
+
+# Demo
+tests/config_test.py
 
 # Features
-- FileType:
-Raise Errors during config parsing:
-- Config contains a value that is not specified in the proto (To avoid passing wrong and using default values instead)
-- Value is of wrong type
-- Value is constant
-
-Raises error:
-- When config file is overwritten after parsing. Config should be fixed.
-
-Supports:
-- default data types:
+- Static configuration parsing before program is started
+- Easy verification of existing configurations, if they still work with the current pipeline
+- Easy extension of existing configurations by adding default values to templates
+- Automatically make types within a subfolder choosable
+- Comment individual configuration values
+- Overwrite values using the command line or from code
+- Data type testing, ensure the correct datatype:
     - int
     - float
     - str
-- custom data types: Which can be built from default data types
-- Default values
-- Required
-- Comment
+    - bool
 
 ## TODO
 - [x] clean split between types, attributes, special types
@@ -46,3 +43,6 @@ Supports:
 - [ ] Generation of a seed.
 - [ ] Pip Package
 - [ ] Github Services
+- [ ] Copy From to ensure same training as validation, or make it as default?
+- [ ] ensure two values are equal, but then why even set two?
+- [ ] Config updates, pass multiple configs
