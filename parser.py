@@ -1,4 +1,4 @@
-class Descriptor(object):
+class Parser(object):
     @property
     def value(self):
         return self._value
@@ -13,6 +13,9 @@ class Descriptor(object):
         self._value = None
         self.isset = False
 
+    def __call__(self):
+        return self.parse()
+
     def parse(self):
         raise NotImplementedError()
 
@@ -20,7 +23,7 @@ class Descriptor(object):
         return self.value
 
 
-class IntType(Descriptor):
+class IntType(Parser):
     def parse(self):
         if isinstance(self.value, int):
             return True
@@ -31,7 +34,7 @@ class IntType(Descriptor):
         raise ValueError("Expected Int")
 
 
-class FloatType(Descriptor):
+class FloatType(Parser):
     @staticmethod
     def isfloat(value):
         try:
@@ -49,7 +52,7 @@ class FloatType(Descriptor):
         raise ValueError("Expected Float")
 
 
-class BoolType(Descriptor):
+class BoolType(Parser):
     def parse(self):
         if isinstance(self.value, bool):
             return True
@@ -63,14 +66,14 @@ class BoolType(Descriptor):
         raise ValueError("Expected Boolean")
 
 
-class StringType(Descriptor):
+class StringType(Parser):
     def parse(self):
         if not isinstance(self.value, str):
             raise ValueError("Expected String")
         return True
 
 
-class EvalType(Descriptor):
+class EvalType(Parser):
     def parse(self):
         if not isinstance(self.value, str):
             raise ValueError("Expected String")

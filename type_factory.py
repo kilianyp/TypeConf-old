@@ -1,13 +1,14 @@
 """This works sequentially by performing first a dependency analysis"""
 
-from dep_graph import DependencyGraph
-import utils as u
 import logging
-from base_types import BASE_TYPES
-from attribute import AttributeFactory
-from base_types import Descriptor
 import json
 import os
+from dep_graph import DependencyGraph
+from file_tree import FileTree
+import utils as u
+from parser import BASE_TYPES
+from attribute import AttributeFactory
+from parser import Parser
 
 MAGIC_SPLIT_NAME = '.'
 
@@ -21,7 +22,7 @@ class Config(dict):
         return json.dumps(self, indent=4)
 
 
-class OneOf(Descriptor):
+class OneOf(Parser):
     """
     One Of value
     """
@@ -45,7 +46,7 @@ class OneOf(Descriptor):
         return ', '.join(str(o) for o in self.options)
 
 
-class Const(Descriptor):
+class Const(Parser):
     @property
     def value(self):
         return self._value
@@ -63,7 +64,7 @@ class Const(Descriptor):
         return True
 
 
-class OneOfType(Descriptor):
+class OneOfType(Parser):
     """
     One of Type
     MasterType:
@@ -106,7 +107,7 @@ class OneOfType(Descriptor):
         return {subkey: sub.to_config()}
 
 
-class MultipleOfType(Descriptor):
+class MultipleOfType(Parser):
     """
     Multiple of Type
     MasterType:
@@ -122,7 +123,7 @@ class MultipleOfType(Descriptor):
 # TODO parsing is spread between building, value setting and parse function
 # TODO try to do everything in parse
 
-class CompositeType(Descriptor):
+class CompositeType(Parser):
     @property
     def value(self):
         return self._value
@@ -137,12 +138,11 @@ class CompositeType(Descriptor):
         TODO what about cycles
         """
         # assert that this is a mapping
-        print(self.name, value)
         for key, attribute in self.attributes.items():
             # if no value for attribute
             if key not in value:
                 continue
-            attribute.descriptor.value = value.pop(key)
+            attribute.parser.value = value.pop(key)
 
         if len(value) != 0:
             logger.warning("There are unused keys in this config: %s", ", ".join(value.keys()))
@@ -171,7 +171,7 @@ class CompositeType(Descriptor):
             try:
                 attribute.parse()
             except ValueError as e:
-                print(key, attribute.descriptor.value)
+                print(key, attribute.parser.value)
                 raise
         return is_valid
 
@@ -179,10 +179,10 @@ class CompositeType(Descriptor):
         return len(self.attributes)
 
     def to_config(self):
-        return Config({key: attribute.descriptor.to_config() for key, attribute in self.attributes.items()})
+        return Config({key: attribute.parser.to_config() for key, attribute in self.attributes.items()})
 
 
-class FileType(Descriptor):
+class FileType(Parser):
     def __init__(self, name, overwrite=False, make_path=True):
         self.__init__(name)
         self.overwrite = overwrite
@@ -200,16 +200,16 @@ class FileType(Descriptor):
         if os.path.isdir(self.value):
             raise ValueError("A Folder with this name exits")
             return False
-        path = os.path.dirname()
+        path = os.path.dirname(self.value)
         if self.make_path:
-            u.make_path(self.value)
+            u.make_path(path)
             return True
         else:
-            return raise ValueError("Path was not created")
+            raise ValueError(f"Path {self.value} does not exist and"
+                             "was not created")
 
 
-
-class FolderType(Descriptor):
+class FolderType(Parser):
     def __init__(self, make_path=True):
         self.make_path = path
     def parse(self):
@@ -224,33 +224,6 @@ class FolderType(Descriptor):
             return True
         raise ValueError("Path does not exist and was not created")
         return False
-
-
-
-
-class FileTree(object):
-    """
-    A simple to keep track of the subclasses of a folder
-    """
-    def __init__(self):
-        self.nested = {}
-
-    def add(self, structure, name):
-        """This does not work
-        if a directory is added before the file.
-        """
-        level = self.nested
-        for s in structure[:-1]:
-            if s not in level:
-                level[s] = {}
-            level = level[s]
-        level[structure[-1]] = name
-
-    def get(self, structure):
-        level = self.nested
-        for s in structure:
-            level = level[s]
-        return level.values()
 
 
 class TypeFactory(object):
@@ -283,7 +256,7 @@ class TypeFactory(object):
         if cfg is None:
             logger.warning("Skipping %s (%s)", name, path)
 
-        self.file_tree.add(structure, name)
+        self.file_tree.add(name, structure)
         self.register_cfg(name, cfg)
 
     def register_type(self, name, type):
@@ -306,21 +279,21 @@ class TypeFactory(object):
 
     def build_type(self, type, name, cfg):
         if type == "oneof":
-            descriptor = OneOf(name)
-            descriptor.add_options(cfg.pop('options'))
+            parser = OneOf(name)
+            parser.add_options(cfg.pop('options'))
         elif type == "datatype":
             # this type exists because of dependency analysis
-            descriptor = self.get(cfg.pop('dtype'))
+            parser = self.get(cfg.pop('dtype'))
         elif type == "const":
-            descriptor = Const(name, cfg.pop('value'))
+            parser = Const(name, cfg.pop('value'))
         elif type == "one_of_type":
             # Folder
             subtypes = {}
             for dep in cfg['subtypes']:
                 subtypes[dep] = self.get(dep)
-            descriptor = OneOfType(name, subtypes)
+            parser = OneOfType(name, subtypes)
         elif type == "composite_type":
-            descriptor = CompositeType(name)
+            parser = CompositeType(name)
             for key, values in cfg.items():
                 try:
                     type_name = values.pop('type')
@@ -329,11 +302,11 @@ class TypeFactory(object):
                 except:
                     print(key, values, name)
                     raise
-                descriptor.add_attribute(key, attribute)
+                parser.add_attribute(key, attribute)
             # TODO differentiate between errors in templates and config
         else:
             raise ValueError("Error in Template {}: unknown type {}".format(name, type))
-        return descriptor
+        return parser
 
     def build_from_node(self, node):
         cfg = node.cfg
