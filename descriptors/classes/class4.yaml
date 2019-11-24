@@ -1,6 +1,0 @@
-Attribute1:
-    dtype: int
-    required: true
-    help: "test1"
-    default: 0
-    type: datatype
