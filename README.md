@@ -1,22 +1,96 @@
-# A typesafe, hierarchical configuration for python using templates
-The idea of this project is that you can define a configuration that is parsed before the actual
-program is run.
-Therefore, no unwanted surprises during the run of the program should happen.
-This is in contrast to other typesafe libraries
-([1](https://github.com/beetbox/confuse),
-[2](https://github.com/chimpler/pyhocon))
-that check the type when it is fetched from the configuration.
+# TypeConf
 
-This is designed in particular for setups that require longer calculations before saving
-the current progress (for example ML).
+## A static configuration parser for python using templates
 
-Furthermore, it tries to help maintain up-to-date configurations that still work despite
-new configuration options.
+Python is as a dynamic programming language inherently prone to runtime errors. This  is especially problematic for long-running programms. A wrong configuration then can lead to the loss of precious computation.
+
+Sounds familiar?
+
+TypeConf builds a configuration parser from templates, that can be hierarchical nested to define your individual configuration. This template can be easily parsed then at the beginning of your code and checked for your individual requirements.
+
+Furthermore, TypeConf helps maintain up-to-date configurations by quickly revealing broken configurations and making easy to support old configurations despite changes.
 
 # Demo
-tests/config_test.py
+
+```yaml
+# templates/parent.yaml
+attr_int:
+    dtype: int
+    required: False
+    help: "This is an int"
+    default: 0
+    type: "datatype"
+attr_child:
+    dtype: child
+    required: False
+    help: "This a type constructed from another yaml"
+    type: "datatype"        
+```
+
+
+
+```yaml
+# templates/child.yaml
+attr_bool:
+    dtype: bool
+    required: True
+    help: "This is a bool"
+    type: "datatype"
+```
+
+
+
+TypeConf will be automatically be able to solve the dependencies when building the type.
+
+```python
+# main.py
+from type_factory import TypeFactory
+factory = TypeFactory()
+factory.register_search_directory('templates')
+parser = factory.get_parser('parent')
+
+parser.fill_from_file('config.yaml')
+
+```
+
+We can now pass a config file to be parsed.
+
+```yaml
+# config.yaml
+attr_child:
+    attr_bool: True
+```
+
+```python
+parser.fill_from_file('config.yaml')
+```
+
+This values can also be overwritten by command line arguments, addressing subconfigs through dot separated names.
+
+```python
+from argparse import ArgumentParser
+parser = ArgumentParser()
+parser.add_argument('task')
+# python main.py test attr_child.attr_bool=False
+args, unknown_args = parser.parse_known_args()
+# args.task = test
+parser.fill_from_cl(unknown_args)
+```
+
+Finally we create the config that can be used throughout the rest of the code.
+
+```python
+config = parser.to_config()  # Actual parsing happens here
+# {
+#    attr_int: 0,
+#    attr_child: {
+#       attr_bool: False  #overwritten by cli
+#    }
+# }
+```
 
 # Features
+
 - Static configuration parsing before program is started
 - Easy verification of existing configurations, if they still work with the current pipeline
 - Easy extension of existing configurations by adding default values to templates
@@ -24,13 +98,16 @@ tests/config_test.py
 - Comment individual configuration values
 - Overwrite values using the command line or from code
 - Data type testing, ensure the correct datatype:
-    - int
-    - float
-    - str
-    - bool
+  - int
+  - float
+  - str
+  - bool
 
 ## TODO
+
 - [x] clean split between types, attributes, special types
+- [ ] Consistent naming
+- [ ] Allow more combinations e.g. choice of + datatype
 - [ ] better error messages
 - [ ] config from python file
 - [ ] unit tests
