@@ -1,10 +1,10 @@
 import logging
-import utils as u
+from . import utils as u
 
 logger = logging.getLogger()
 
-class ConfigParser(object):
-    def __init__(self, parser, name):
+class ConfigTemplate(object):
+    def __init__(self, name, parser):
         self.name = name
         self.parser = parser
 

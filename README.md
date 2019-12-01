@@ -10,6 +10,12 @@ TypeConf builds a configuration parser from templates, that can be hierarchical 
 
 Furthermore, TypeConf helps maintain up-to-date configurations by quickly revealing broken configurations and making easy to support old configurations despite changes.
 
+# Installation 
+## From PyPi
+pip install typeconf
+## From source
+pip install git+https://github.com/kilsenp/TypeConf.git
+
 # Demo
 
 ```yaml
@@ -44,12 +50,10 @@ TypeConf will be automatically be able to solve the dependencies when building t
 
 ```python
 # main.py
-from type_factory import TypeFactory
+from typeconf import TypeFactory
 factory = TypeFactory()
 factory.register_search_directory('templates')
-parser = factory.get_parser('parent')
-
-parser.fill_from_file('config.yaml')
+template = factory.build_template('parent')
 
 ```
 
@@ -62,7 +66,7 @@ attr_child:
 ```
 
 ```python
-parser.fill_from_file('config.yaml')
+template.fill_from_file('config.yaml')
 ```
 
 This values can also be overwritten by command line arguments, addressing subconfigs through dot separated names.
@@ -74,13 +78,13 @@ parser.add_argument('task')
 # python main.py test attr_child.attr_bool=False
 args, unknown_args = parser.parse_known_args()
 # args.task = test
-parser.fill_from_cl(unknown_args)
+template.fill_from_cl(unknown_args)
 ```
 
 Finally we create the config that can be used throughout the rest of the code.
 
 ```python
-config = parser.to_config()  # Actual parsing happens here
+config = template.to_config()  # Actual parsing happens here
 # {
 #    attr_int: 0,
 #    attr_child: {

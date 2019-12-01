@@ -3,12 +3,12 @@
 import logging
 import json
 import os
-from dep_graph import DependencyGraph
-from file_tree import FileTree
-import utils as u
-from parser import BASE_TYPES
-from attribute import AttributeFactory
-from parser import Parser
+from .dep_graph import DependencyGraph
+from .file_tree import FileTree
+from . import utils as u
+from .parser import BASE_TYPES, Parser
+from .attribute import AttributeFactory
+from .config_template import ConfigTemplate
 
 MAGIC_SPLIT_NAME = '.'
 
@@ -325,6 +325,9 @@ class TypeFactory(object):
             typ = self.types[name]
 
         return copy.deepcopy(typ)
+
+    def build_template(self, name):
+        return ConfigTemplate(name, self.get(name))
 
     @staticmethod
     def extract_dependcies(cfg):
