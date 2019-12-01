@@ -2,7 +2,7 @@
 
 ## A static configuration parser for python using templates
 
-Python is as a dynamic programming language inherently prone to runtime errors. This  is especially problematic for long-running programms. A wrong configuration then can lead to the loss of precious computation.
+Python is as a dynamic programming language inherently prone to runtime errors. This  is especially problematic for long-running programms. A wrong or missing value in the configuration then can lead very easily to the loss of your precious computation.
 
 Sounds familiar?
 
@@ -10,7 +10,8 @@ TypeConf builds a configuration parser from templates, that can be hierarchical 
 
 Furthermore, TypeConf helps maintain up-to-date configurations by quickly revealing broken configurations and making easy to support old configurations despite changes.
 
-# Installation 
+# Installation
+
 ## From PyPi
 
 ```
@@ -18,6 +19,7 @@ pip install typeconf
 ```
 
 ## From source
+
 ```
 pip install git+https://github.com/kilsenp/TypeConf.git
 ```
@@ -39,7 +41,6 @@ attr_child:
     type: "datatype"
 ```
 
-
 ```yaml
 # templates/child.yaml
 attr_bool:
@@ -49,8 +50,6 @@ attr_bool:
     type: "datatype"
 ```
 
-
-
 TypeConf will be automatically be able to solve the dependencies when building the type.
 
 ```python
@@ -59,7 +58,6 @@ from typeconf import TypeFactory
 factory = TypeFactory()
 factory.register_search_directory('templates')
 template = factory.build_template('parent')
-
 ```
 
 We can now pass a config file to be parsed.
