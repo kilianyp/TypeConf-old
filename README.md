@@ -12,9 +12,15 @@ Furthermore, TypeConf helps maintain up-to-date configurations by quickly reveal
 
 # Installation 
 ## From PyPi
+
+```
 pip install typeconf
+```
+
 ## From source
+```
 pip install git+https://github.com/kilsenp/TypeConf.git
+```
 
 # Demo
 
@@ -30,9 +36,8 @@ attr_child:
     dtype: child
     required: False
     help: "This a type constructed from another yaml"
-    type: "datatype"        
+    type: "datatype"
 ```
-
 
 
 ```yaml
@@ -117,12 +122,11 @@ config = template.to_config()  # Actual parsing happens here
 - [ ] unit tests
 - [ ] @config_file('path_to_cfg')
 - [ ] eval and type are not exclusive. make additional attribute
-- [ ] Better name parser instead of type?
 - [ ] Pretty print with comments
 - [x] Command line interface
 - [ ] Conditional requirements. If a is set b also has to be set. Better if b is a part of a? Leads to duplicates
 - [ ] Generation of a seed.
-- [ ] Pip Package
+- [x] Pip Package
 - [ ] Github Services
 - [ ] Copy From to ensure same training as validation, or make it as default?
 - [ ] ensure two values are equal, but then why even set two?
