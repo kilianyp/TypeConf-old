@@ -1,8 +1,8 @@
-from parser import IntType
+from typeconf import parser as p
 import pytest
 
 def test_int_parser():
-    parser = IntType("test")
+    parser = p.IntType("test")
     parser.value = 1
     parser.parse()
     parser.value = "1"

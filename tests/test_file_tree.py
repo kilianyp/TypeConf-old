@@ -1,4 +1,4 @@
-from type_factory import FileTree
+from typeconf import FileTree
 import pytest
 
 def test_file_tree():
