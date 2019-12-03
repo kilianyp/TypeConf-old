@@ -73,20 +73,11 @@ class StringType(Parser):
         return True
 
 
-class EvalType(Parser):
-    def parse(self):
-        if not isinstance(self.value, str):
-            raise ValueError("Expected String")
-        self.value = eval(self.value)
-        return True
-
-
 BASE_TYPES = {
     'int': IntType,
     'float': FloatType,
     'bool': BoolType,
-    'string': StringType,
-    'eval': EvalType
+    'string': StringType
 }
 
 

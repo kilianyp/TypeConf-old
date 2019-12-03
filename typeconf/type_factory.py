@@ -41,24 +41,6 @@ class OneOf(Parser):
         return ', '.join(str(o) for o in self.options)
 
 
-class Const(Parser):
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        raise ValueError("{} is const, cannot set value {}".format(self.name, value))
-
-    def __init__(self, name, value):
-        super().__init__(name)
-        self._value = value
-        self.isset = True
-
-    def parse(self):
-        return True
-
-
 class OneOfType(Parser):
     """
     One of Type
@@ -279,8 +261,6 @@ class TypeFactory(object):
         elif type == "datatype":
             # this type exists because of dependency analysis
             parser = self.get(cfg.pop('dtype'))
-        elif type == "const":
-            parser = Const(name, cfg.pop('value'))
         elif type == "one_of_type":
             # Folder
             subtypes = {}

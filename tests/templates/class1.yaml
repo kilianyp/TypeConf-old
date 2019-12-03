@@ -5,7 +5,7 @@ AttributeInt:
     type: "datatype"
 
 AttributeBool:
-    dtype: bool
+    dtype: bool 
     required: true
     help: "testbool"
     default: False
@@ -41,8 +41,10 @@ AttributeFloat:
 
 AttributeConst:
     required: false
-    type: "const"
-    value: 5
+    type: datatype
+    dtype: int
+    const: True
+    default: 5
 
 AttributeFolder:
     required: true
@@ -57,8 +59,9 @@ AttributeClass:
     dtype: class2
 
 Attributeeval:
-    dtype: eval
+    eval: True
     required: False
     help: "test1"
     default: 4 + 2
     type: datatype
+    dtype: int

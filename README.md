@@ -113,13 +113,14 @@ config = template.to_config()  # Actual parsing happens here
 ## TODO
 
 - [x] clean split between types, attributes, special types
+- [ ] Debug logging
 - [ ] Consistent naming
-- [ ] Allow more combinations e.g. choice of + datatype
+- [x] Allow more combinations e.g. eval + datatype
+- [x] eval and type are not exclusive. make additional attribute
 - [ ] better error messages
 - [ ] config from python file
 - [ ] unit tests
 - [ ] @config_file('path_to_cfg')
-- [ ] eval and type are not exclusive. make additional attribute
 - [ ] Pretty print with comments
 - [x] Command line interface
 - [ ] Conditional requirements. If a is set b also has to be set. Better if b is a part of a? Leads to duplicates
