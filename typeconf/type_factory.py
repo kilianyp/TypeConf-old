@@ -9,17 +9,12 @@ from . import utils as u
 from .parser import BASE_TYPES, Parser
 from .attribute import AttributeFactory
 from .config_template import ConfigTemplate
+from .config import Config
 
 MAGIC_SPLIT_NAME = '.'
 
 logger = logging.getLogger()
 
-
-class Config(dict):
-    """ TODO access per dot.
-        print with help"""
-    def __str__(self):
-        return json.dumps(self, indent=4)
 
 
 class OneOf(Parser):
