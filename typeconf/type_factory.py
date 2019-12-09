@@ -204,12 +204,14 @@ class FolderType(Parser):
 
 
 class TypeFactory(object):
-    def __init__(self):
+    def __init__(self, *args):
         self.types = {}
         self.dependency_graph = DependencyGraph()
         self.file_tree = FileTree()
         for name, typ in BASE_TYPES.items():
             self.register_type(name, typ(name))
+        for arg in args:
+            self.register_search_directory(arg)
 
     def register_search_directory(self, path):
         for path, structure, type_enum in u.discover(path):
