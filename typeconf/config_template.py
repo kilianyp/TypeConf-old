@@ -1,5 +1,6 @@
 import logging
 from . import utils as u
+from argparse import ArgumentParser
 
 logger = logging.getLogger()
 
@@ -7,6 +8,12 @@ class ConfigTemplate(object):
     def __init__(self, name, parser):
         self.name = name
         self.parser = parser
+        self.argument_parser = ArgumentParser()
+
+    def parse_args(self, args=None):
+        args, unknown_args = self.argument_parser.parse_known_args(args)
+        self.fill_from_cl(unknown_args)
+        return args
 
     def fill_from_file(self, path):
         cfg = u.read_file(path)
@@ -30,3 +37,6 @@ class ConfigTemplate(object):
     def to_config(self):
         self.parser.parse()
         return self.parser.to_config()
+
+
+
